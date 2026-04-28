@@ -163,7 +163,7 @@ export default function TrainTab({ onFinish }: TrainTabProps) {
         <div className="w-24 h-24 bg-[#6C63FF]/10 rounded-full flex items-center justify-center relative">
           <motion.div 
             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity }}
+            transition={{ type: "tween", duration: 2, repeat: Infinity, ease: "easeInOut" }}
             className="absolute inset-0 bg-[#6C63FF] rounded-full"
           />
           <Zap size={40} className="text-[#6C63FF] relative z-10" />
@@ -272,6 +272,7 @@ export default function TrainTab({ onFinish }: TrainTabProps) {
                       scale: completedCount === ex.sets ? [1, 1.2, 1] : 1,
                       backgroundColor: completedCount === ex.sets ? 'rgba(76, 175, 80, 0.2)' : 'rgba(108, 99, 255, 0.2)'
                     }}
+                    transition={{ type: "tween", duration: 0.4 }}
                     className={`w-10 h-10 rounded-full flex items-center justify-center ${completedCount === ex.sets ? 'text-[#4CAF50]' : 'text-[#6C63FF]'}`}
                   >
                     {completedCount === ex.sets ? (
@@ -312,9 +313,9 @@ export default function TrainTab({ onFinish }: TrainTabProps) {
                             boxShadow: isDone ? '0 0 8px rgba(76, 175, 80, 0.4)' : 'none'
                           }}
                           transition={{ 
-                            type: "spring",
-                            stiffness: 400,
-                            damping: 10
+                            type: "tween",
+                            duration: 0.3,
+                            ease: "easeOut"
                           }}
                           className="w-1.5 h-1.5 rounded-full"
                         />
@@ -400,6 +401,7 @@ export default function TrainTab({ onFinish }: TrainTabProps) {
                                   backgroundColor: currentCompleted[i] ? '#4CAF50' : 'transparent',
                                   borderColor: currentCompleted[i] ? '#4CAF50' : 'rgba(255,255,255,0.2)'
                                 }}
+                                transition={{ type: "tween", duration: 0.3 }}
                                 className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-shadow ${currentCompleted[i] ? 'shadow-lg shadow-[#4CAF50]/20' : ''}`}
                               >
                                 {currentCompleted[i] && (
