@@ -15,6 +15,8 @@ import { MOCK_DATA } from '../constants';
 import confetti from 'canvas-confetti';
 import { useNotifications } from '../context/NotificationContext';
 import { useUser } from '../context/UserContext';
+import { feedback } from '../lib/haptics';
+import AnalogueClock from './ui/AnalogueClock';
 
 interface ExerciseDetail {
   id: string;
@@ -70,9 +72,11 @@ const MOTIVATION_STYLES = [
 
 export default function SmartAssistant() {
   const { addNotification } = useNotifications();
-  const { user } = useUser();
+  const { user, updateUser } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
+  const [isEditingAssistant, setIsEditingAssistant] = useState(false);
+  const [showAnalogue, setShowAnalogue] = useState(false);
   const [scheduledWorkouts, setScheduledWorkouts] = useState<WorkoutPlan[]>([
     {
       id: 's1',
@@ -134,7 +138,7 @@ export default function SmartAssistant() {
       { id: 'rem-15m', type: 'automatic', timeOffset: 15, timeUnit: 'min', message: '15 min mein GYM TIME!', enabled: true },
       { id: 'rem-now', type: 'workout_time', timeOffset: 0, timeUnit: 'min', message: 'WORKOUT START KARO RAKESH!', enabled: true },
     ],
-    motivationStyle: 'friendly',
+    motivationStyle: user.assistantStyle || 'friendly',
     confirmationEnabled: true
   });
 
@@ -174,6 +178,32 @@ export default function SmartAssistant() {
     const sleep = MOCK_DATA.stats.sleepHours || MOCK_DATA.stats.sleep;
     const steps = MOCK_DATA.stats.stepsToday || MOCK_DATA.stats.steps;
     const heartRate = (MOCK_DATA.stats as any).heartRate || 72;
+    const bodyFat = 15; // Example stat
+
+    // logic improvement: consider user goal
+    if (user.goal === 'Weight Loss' && steps < 5000) {
+      return {
+        id: '',
+        day: 'Tomorrow',
+        time: '7:00 AM',
+        duration: '45 min',
+        name: 'Fat Burn: HIIT & Cardio',
+        type: ['HIIT', 'Cardio'],
+        muscleGroups: ['Full Body'],
+        energyLevel: 6,
+        goal: 'Burn Fat',
+        reminders: [
+          { id: 'rc-fb1', type: 'automatic', timeOffset: 60, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.automatic).replace('{offset}', '60 min'), enabled: true },
+          { id: 'rc-fb2', type: 'workout_time', timeOffset: 0, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.workout_time), enabled: true },
+        ],
+        motivationStyle: user.assistantStyle || 'friendly',
+        confirmationEnabled: true,
+        exercises: [
+          { id: 'ex-1', name: 'Burpees', sets: 4, reps: 15, weight: 'BW' },
+          { id: 'ex-2', name: 'Mountain Climbers', sets: 4, reps: 30, weight: 'BW' },
+        ]
+      };
+    }
 
     if (sleep < 6 || heartRate > 85) {
       return {
@@ -230,9 +260,9 @@ export default function SmartAssistant() {
         energyLevel: 7,
         goal: 'Build Muscle',
         reminders: [
-          { id: 'rc4', type: 'confirmation', timeOffset: 60, timeUnit: 'min', message: 'Kal ka workout ready hai?', enabled: true },
-          { id: 'rc5', type: 'automatic', timeOffset: 60, timeUnit: 'min', message: '1 ghante mein workout!', enabled: true },
-          { id: 'rc6', type: 'workout_time', timeOffset: 0, timeUnit: 'min', message: 'WORKOUT START!', enabled: true },
+          { id: 'rc4', type: 'confirmation', timeOffset: 60, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.confirmation), enabled: true },
+          { id: 'rc5', type: 'automatic', timeOffset: 60, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.automatic).replace('{offset}', '60 min'), enabled: true },
+          { id: 'rc6', type: 'workout_time', timeOffset: 0, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.workout_time), enabled: true },
         ],
         motivationStyle: 'aggressive',
         confirmationEnabled: true,
@@ -245,6 +275,7 @@ export default function SmartAssistant() {
   };
 
   const handleNext = () => {
+    setShowAnalogue(false);
     if (step < 6) setStep(step + 1);
     if (step === 5) {
       confetti({
@@ -257,6 +288,7 @@ export default function SmartAssistant() {
   };
 
   const handleBack = () => {
+    setShowAnalogue(false);
     if (step > 1) setStep(step - 1);
   };
 
@@ -312,12 +344,12 @@ export default function SmartAssistant() {
           { id: 'd2', name: 'Shoulder Press', sets: 3, reps: 12, weight: 50 },
         ],
         reminders: [
-          { id: 'rem-conf', type: 'confirmation', timeOffset: 20, timeUnit: 'absolute', message: 'Kal ka workout ready hai?', enabled: true },
-          { id: 'rem-1h', type: 'automatic', timeOffset: 60, timeUnit: 'min', message: '1 ghante mein workout!', enabled: true },
-          { id: 'rem-15m', type: 'automatic', timeOffset: 15, timeUnit: 'min', message: '15 min mein GYM TIME!', enabled: true },
-          { id: 'rem-now', type: 'workout_time', timeOffset: 0, timeUnit: 'min', message: 'WORKOUT START KARO RAKESH!', enabled: true },
+          { id: 'rem-conf', type: 'confirmation', timeOffset: 20, timeUnit: 'absolute', message: getPreviewMessage(user.assistantMessages.confirmation), enabled: true },
+          { id: 'rem-1h', type: 'automatic', timeOffset: 60, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.automatic).replace('{offset}', '1 hr'), enabled: true },
+          { id: 'rem-15m', type: 'automatic', timeOffset: 15, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.automatic).replace('{offset}', '15 min'), enabled: true },
+          { id: 'rem-now', type: 'workout_time', timeOffset: 0, timeUnit: 'min', message: getPreviewMessage(user.assistantMessages.workout_time), enabled: true },
         ],
-        motivationStyle: 'friendly',
+        motivationStyle: user.assistantStyle || 'friendly',
         confirmationEnabled: true
       });
     }, 300);
@@ -402,19 +434,8 @@ export default function SmartAssistant() {
   };
 
   const applyMotivationStyle = (styleId: string) => {
-    const templates = (styleTemplates as any)[styleId];
-    if (!templates) return;
-
-    const newReminders = (draft.reminders || []).map(r => {
-      let msg = r.message;
-      if (r.type === 'confirmation') msg = templates.confirmation;
-      else if (r.type === 'workout_time') msg = templates.workout_time;
-      else if (r.type === 'automatic' || r.type === 'manual') msg = templates.automatic;
-      
-      return { ...r, message: msg };
-    });
-
-    setDraft({ ...draft, motivationStyle: styleId, reminders: newReminders });
+    updateUser({ assistantStyle: styleId });
+    feedback();
   };
 
   const updateTemplate = (styleId: string, type: 'confirmation' | 'automatic' | 'workout_time', val: string) => {
@@ -544,15 +565,41 @@ export default function SmartAssistant() {
       >
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center space-x-3">
-            <div className="bg-[#6C63FF] p-2.5 rounded-2xl shadow-lg shadow-[#6C63FF]/20">
+            <div className="bg-[#6C63FF] p-2.5 rounded-2xl shadow-lg shadow-[#6C63FF]/20 cursor-pointer" onClick={() => setIsEditingAssistant(true)}>
               <Bell size={20} className="text-white" />
             </div>
-            <div>
-              <h3 className="font-bold text-sm">Smart Assistant</h3>
+            <div className="cursor-pointer" onClick={() => setIsEditingAssistant(true)}>
+              <h3 className="font-bold text-sm">{user.assistantName}</h3>
               <p className="text-xs text-gray-400">{user.name}, kal ka plan banao apne hisaab se</p>
             </div>
           </div>
+          <div className="flex space-x-1">
+            <button 
+              onClick={() => {
+                feedback();
+                setIsEditingAssistant(true);
+              }}
+              className="p-2 hover:bg-white/5 rounded-xl text-gray-500 hover:text-[#6C63FF] transition-colors"
+            >
+              <Settings size={18} />
+            </button>
+          </div>
         </div>
+
+        {/* Proactive Logic: Smart Insight Chip */}
+        <motion.div 
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-6 bg-[#6C63FF]/5 border border-[#6C63FF]/10 p-4 rounded-3xl flex items-start space-x-3"
+        >
+          <div className="bg-[#6C63FF] p-1.5 rounded-lg shrink-0">
+            <Zap size={10} className="text-white" />
+          </div>
+          <p className="text-[11px] font-medium text-white/80 leading-relaxed">
+            <span className="text-[#6C63FF] font-black uppercase tracking-tighter mr-1">Pro Insight:</span>
+            {MOCK_DATA.stats.sleep < 7 ? "Low sleep detected. Kal heavy lift avoid karna." : "Peak state! Tomorrow is perfect for PR attempt."}
+          </p>
+        </motion.div>
 
         {scheduledWorkouts.length > 0 && (
           <div className="space-y-2.5 mb-6">
@@ -634,20 +681,38 @@ export default function SmartAssistant() {
                     </div>
 
                     <div className="space-y-4">
-                      <p className="text-[10px] uppercase font-black text-[#6C63FF] tracking-widest pl-1">Preferred Times</p>
-                      <div className="grid grid-cols-4 gap-2">
-                        {['5:00AM', '5:30AM', '6:00AM', '6:30AM', '7:00AM', '7:30AM', '8:00AM', 'Custom'].map(t => (
-                          <button 
-                            key={t}
-                            onClick={() => setDraft({ ...draft, time: t })}
-                            className={`py-3.5 rounded-2xl text-[11px] font-bold transition-all ${
-                              draft.time === t ? 'bg-[#6C63FF] text-white shadow-lg shadow-[#6C63FF]/30' : 'bg-[#1a1a1a] text-gray-400 hover:bg-white/5'
-                            }`}
-                          >
-                            {t}
-                          </button>
-                        ))}
+                      <div className="flex items-center justify-between px-1">
+                        <p className="text-[10px] uppercase font-black text-[#6C63FF] tracking-widest">Time Select</p>
+                        <button 
+                          onClick={() => setShowAnalogue(!showAnalogue)}
+                          className="text-[9px] font-black uppercase text-gray-500 hover:text-[#6C63FF] shadow-sm transition-all"
+                        >
+                          {showAnalogue ? 'Use Grid' : 'Use Clock 🕒'}
+                        </button>
                       </div>
+
+                      {showAnalogue ? (
+                        <div className="bg-[#1a1a1a] p-6 rounded-[2.5rem] border border-white/5">
+                          <AnalogueClock 
+                            initialTime={draft.time || '6:00 AM'} 
+                            onChange={(time) => setDraft({ ...draft, time })} 
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-2">
+                          {['5:00 AM', '5:30 AM', '6:00 AM', '6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM', 'Custom'].map(t => (
+                            <button 
+                              key={t}
+                              onClick={() => setDraft({ ...draft, time: t })}
+                              className={`py-3.5 rounded-2xl text-[11px] font-bold transition-all ${
+                                draft.time === t ? 'bg-[#6C63FF] text-white shadow-lg shadow-[#6C63FF]/30' : 'bg-[#1a1a1a] text-gray-400 hover:bg-white/5'
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-4">
@@ -991,17 +1056,47 @@ export default function SmartAssistant() {
                                       );
                                    })}
                                    <button 
-                                     onClick={() => setShowCustomPicker(true)}
+                                     onClick={() => {
+                                       feedback();
+                                       setShowAnalogue(!showAnalogue);
+                                     }}
                                      className={`px-4 py-2 rounded-xl text-[10px] font-bold border transition-all ${
-                                       !([60, 120, 180].includes((draft.reminders || []).find(r => r.type === 'confirmation')?.timeOffset || 0)) 
+                                       (draft.reminders || []).find(r => r.type === 'confirmation')?.timeUnit === 'absolute' || showAnalogue
                                        ? 'bg-[#6C63FF]/20 text-[#6C63FF] border-[#6C63FF]/30' 
-                                       : 'bg-white/5 border-white/10 text-gray-400'
+                                       : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                                      }`}
                                    >
-                                     Custom
+                                     {showAnalogue ? 'Back' : 'Clock 🕒'}
                                    </button>
                                  </div>
                                </div>
+
+                               {showAnalogue && (
+                                 <div className="bg-black/40 p-6 rounded-[2.5rem] border border-white/5 space-y-4 mb-6">
+                                   <AnalogueClock 
+                                     initialTime={(function() {
+                                       const r = (draft.reminders || []).find(r => r.type === 'confirmation');
+                                       if (r?.timeUnit === 'absolute') {
+                                         const h = Math.floor(r.timeOffset / 60);
+                                         const m = r.timeOffset % 60;
+                                         const period = h >= 12 ? 'PM' : 'AM';
+                                         const displayH = ((h + 11) % 12 + 1);
+                                         return `${displayH}:${m.toString().padStart(2, '0')} ${period}`;
+                                       }
+                                       return "8:00 PM";
+                                     })()}
+                                     onChange={(time) => {
+                                       const [t, p] = time.split(' ');
+                                       let [h, m] = t.split(':').map(Number);
+                                       if (p === 'PM' && h !== 12) h += 12;
+                                       if (p === 'AM' && h === 12) h = 0;
+                                       const offset = h * 60 + m;
+                                       updateConfirmationTime(offset, 'absolute');
+                                     }}
+                                   />
+                                   <p className="text-[10px] text-center font-bold text-gray-500 uppercase tracking-widest italic leading-relaxed">Assistant is waqt puchega</p>
+                                 </div>
+                               )}
 
                                <div className="space-y-3">
                                  <p className="text-[10px] text-gray-500 font-bold">WhatsApp Style Notification Preview:</p>
@@ -1428,6 +1523,116 @@ export default function SmartAssistant() {
                   Save Changes
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      
+      {/* Assistant Customization Modal */}
+      <AnimatePresence>
+        {isEditingAssistant && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-6">
+            <motion.div 
+               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-black/98 backdrop-blur-3xl"
+               onClick={() => setIsEditingAssistant(false)}
+            />
+            <motion.div 
+               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+               animate={{ scale: 1, opacity: 1, y: 0 }}
+               exit={{ scale: 0.9, opacity: 0, y: 20 }}
+               className="bg-[#0f0f0f] w-full max-w-[380px] max-h-[85vh] overflow-y-auto no-scrollbar rounded-[3.5rem] p-8 relative z-10 border border-white/10 shadow-2xl space-y-8"
+            >
+              <div className="text-center space-y-1">
+                <div className="w-20 h-20 bg-[#6C63FF]/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#6C63FF]/20">
+                   <Bell size={40} className="text-[#6C63FF]" />
+                </div>
+                <h3 className="text-2xl font-black italic tracking-tighter uppercase">My Assistant</h3>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest italic">Customize your fitness mirror</p>
+              </div>
+
+              <div className="space-y-8">
+                 <div className="space-y-2 px-1">
+                   <label className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest">Assistant Name</label>
+                   <input 
+                     type="text" 
+                     value={user.assistantName}
+                     onChange={(e) => updateUser({ assistantName: e.target.value })}
+                     className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-sm font-bold text-white focus:border-[#6C63FF] outline-none"
+                     placeholder="Apne assistant ka naam rakho..."
+                   />
+                 </div>
+
+                 <div className="space-y-4">
+                   <label className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest px-1">Personality Style</label>
+                   <div className="grid grid-cols-2 gap-2">
+                     {MOTIVATION_STYLES.map(style => (
+                       <button 
+                         key={style.id}
+                         onClick={() => applyMotivationStyle(style.id)}
+                         className={`p-4 rounded-3xl flex flex-col items-center space-y-2 border transition-all ${
+                           user.assistantStyle === style.id ? 'bg-white text-black border-white' : 'bg-[#1a1a1a] border-white/5 text-gray-500'
+                         }`}
+                       >
+                         <span className="text-xl">{style.icon}</span>
+                         <span className="text-[9px] font-bold uppercase">{style.label}</span>
+                       </button>
+                     ))}
+                   </div>
+                 </div>
+
+                 {/* Message Templates section */}
+                 <div className="space-y-4">
+                    <label className="text-[10px] font-black text-[#6C63FF] uppercase tracking-widest px-1">Smart Alerts (Templates)</label>
+                    <div className="space-y-3">
+                       <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold text-gray-500 uppercase px-1">Pre-Workout Confirm</label>
+                          <input 
+                            type="text" 
+                            value={user.assistantMessages.confirmation}
+                            onChange={(e) => updateUser({ assistantMessages: { ...user.assistantMessages, confirmation: e.target.value } })}
+                            className="w-full bg-black/40 border border-white/5 rounded-2xl p-3 text-xs font-bold text-white focus:border-[#6C63FF] outline-none"
+                            placeholder="e.g. Ready for your workout?"
+                          />
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold text-gray-500 uppercase px-1">Approaching Workout</label>
+                          <input 
+                            type="text" 
+                            value={user.assistantMessages.automatic}
+                            onChange={(e) => updateUser({ assistantMessages: { ...user.assistantMessages, automatic: e.target.value } })}
+                            className="w-full bg-black/40 border border-white/5 rounded-2xl p-3 text-xs font-bold text-white focus:border-[#6C63FF] outline-none"
+                            placeholder="e.g. Workout starting in {offset}!"
+                          />
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold text-gray-500 uppercase px-1">Workout Start</label>
+                          <input 
+                            type="text" 
+                            value={user.assistantMessages.workout_time}
+                            onChange={(e) => updateUser({ assistantMessages: { ...user.assistantMessages, workout_time: e.target.value } })}
+                            className="w-full bg-black/40 border border-white/5 rounded-2xl p-3 text-xs font-bold text-white focus:border-[#6C63FF] outline-none"
+                            placeholder="e.g. LET'S GO! Session starting now."
+                          />
+                       </div>
+                       <p className="text-[8px] text-gray-600 italic px-1">Use {'{name}'}, {'{time}'}, {'{workout}'}, {'{offset}'} as variables.</p>
+                    </div>
+                 </div>
+
+                 <div className="bg-[#6C63FF]/5 p-4 rounded-3xl border border-dashed border-[#6C63FF]/20">
+                    <p className="text-[9px] font-black text-[#6C63FF] uppercase tracking-widest mb-2 opacity-50">Personality Preview:</p>
+                    <p className="text-xs font-bold text-white leading-relaxed italic">
+                      "{MOTIVATION_STYLES.find(s => s.id === user.assistantStyle)?.preview.replace('RAKESH', user.name)}"
+                    </p>
+                 </div>
+              </div>
+
+              <button 
+                onClick={() => setIsEditingAssistant(false)}
+                className="w-full bg-[#6C63FF] text-white py-5 rounded-[2rem] text-[10px] font-black uppercase shadow-xl shadow-[#6C63FF]/30 active:scale-95 transition-all sticky bottom-0"
+              >
+                Save All Settings
+              </button>
             </motion.div>
           </div>
         )}

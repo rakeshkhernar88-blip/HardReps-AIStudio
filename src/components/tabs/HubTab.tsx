@@ -9,7 +9,8 @@ import {
   UserCircle,
   ChevronRight,
   TrendingUp,
-  Award
+  Award,
+  Bell
 } from 'lucide-react';
 
 import { feedback } from '../../lib/haptics';
@@ -51,6 +52,13 @@ function HubItem({ id, icon: Icon, label, description, color, onClick }: HubItem
 
 export default function HubTab({ onNavigate }: { onNavigate: (id: string) => void }) {
   const tools = [
+    { 
+      id: 'reminders', 
+      icon: Bell, 
+      label: 'Smart Reminders', 
+      description: 'Customize your health and recovery alerts.',
+      color: 'bg-red-500'
+    },
     { 
       id: 'history', 
       icon: History, 

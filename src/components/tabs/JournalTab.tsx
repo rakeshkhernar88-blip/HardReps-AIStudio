@@ -5,7 +5,9 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Calendar, Smile, Meh, Frown, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Calendar, Smile, Meh, Frown, Sparkles, BrainCircuit } from 'lucide-react';
+import { feedback, triggerHaptic } from '../../lib/haptics';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface Entry {
   id: string;
@@ -21,6 +23,7 @@ const moods = [
 ];
 
 export default function JournalTab() {
+  const { addNotification } = useNotifications();
   const [entries, setEntries] = useState<Entry[]>([
     { id: '1', date: 'Oct 24, 2023', text: 'Hit a new PR on Deadlift today! Feeling strong.', mood: 'Great' },
     { id: '2', date: 'Oct 23, 2023', text: 'Slightly tired, but the workout was decent.', mood: 'Okay' },
@@ -28,9 +31,11 @@ export default function JournalTab() {
   const [isAdding, setIsAdding] = useState(false);
   const [newText, setNewText] = useState('');
   const [selectedMood, setSelectedMood] = useState('Great');
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
   const addEntry = () => {
     if (!newText.trim()) return;
+    feedback();
     const entry: Entry = {
       id: Date.now().toString(),
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
@@ -40,9 +45,32 @@ export default function JournalTab() {
     setEntries([entry, ...entries]);
     setNewText('');
     setIsAdding(false);
+    
+    addNotification(
+      'Entry Saved',
+      'Your progress has been logged in the fitness journal.',
+      'success'
+    );
+  };
+
+  const analyzeEntry = (entry: Entry) => {
+    if (analyzingId) return;
+    feedback();
+    setAnalyzingId(entry.id);
+    
+    setTimeout(() => {
+      setAnalyzingId(null);
+      triggerHaptic(50);
+      addNotification(
+        'AI Insight',
+        `Based on your mood (${entry.mood}) and notes, I recommend focusing on magnesium intake tonight for better recovery.`,
+        'info'
+      );
+    }, 1500);
   };
 
   const deleteEntry = (id: string) => {
+    triggerHaptic(10);
     setEntries(entries.filter(e => e.id !== id));
   };
 
@@ -112,23 +140,33 @@ export default function JournalTab() {
               key={entry.id}
               className="bg-[#1a1a1a] p-4 rounded-3xl border border-white/5 relative group"
             >
-              <div className="flex items-start justify-between mb-2">
-                 <div className="flex items-center space-x-2">
-                    <div className={`p-1.5 rounded-lg bg-black/40 ${moodColor}`}>
-                       <MoodIcon size={14} />
-                    </div>
-                    <div className="flex items-center text-[10px] text-gray-500">
-                       <Calendar size={10} className="mr-1" />
-                       {entry.date}
-                    </div>
-                 </div>
-                 <button 
-                  onClick={() => deleteEntry(entry.id)}
-                  className="text-gray-600 hover:text-[#FF6B6B] transition-colors"
-                 >
-                    <Trash2 size={14} />
-                 </button>
-              </div>
+               <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center space-x-2">
+                     <div className={`p-1.5 rounded-lg bg-black/40 ${moodColor}`}>
+                        <MoodIcon size={14} />
+                     </div>
+                     <div className="flex items-center text-[10px] text-gray-500">
+                        <Calendar size={10} className="mr-1" />
+                        {entry.date}
+                     </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => analyzeEntry(entry)}
+                      disabled={analyzingId === entry.id}
+                      className={`text-[10px] font-bold flex items-center space-x-1 px-2 py-1 rounded-lg bg-[#6C63FF]/10 text-[#6C63FF] border border-[#6C63FF]/20 hover:bg-[#6C63FF]/20 transition-all ${analyzingId === entry.id ? 'animate-pulse' : ''}`}
+                    >
+                      <BrainCircuit size={10} />
+                      <span>{analyzingId === entry.id ? 'Analyzing...' : 'AI Analyze'}</span>
+                    </button>
+                    <button 
+                      onClick={() => deleteEntry(entry.id)}
+                      className="text-gray-600 hover:text-[#FF6B6B] transition-colors p-1"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+               </div>
               <p className="text-xs text-gray-300 leading-relaxed font-medium">
                 {entry.text}
               </p>

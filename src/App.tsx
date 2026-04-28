@@ -36,6 +36,8 @@ import JournalTab from './components/tabs/JournalTab';
 import HistoryTab from './components/tabs/HistoryTab';
 import ProfileTab from './components/tabs/ProfileTab';
 import HubTab from './components/tabs/HubTab';
+import RemindersTab from './components/tabs/RemindersTab';
+import HeartRateTab from './components/tabs/HeartRateTab';
 
 const tabs = [
   { id: 'home', label: 'Home', icon: Home, component: HomeTab },
@@ -43,6 +45,7 @@ const tabs = [
   { id: 'ai', label: 'Coach', icon: MessageSquare, component: AICoachTab },
   { id: 'stats', label: 'Stats', icon: BarChart2, component: StatsTab },
   { id: 'hub', label: 'Hub', icon: LayoutGrid, component: HubTab },
+  { id: 'reminders', label: 'Reminders', icon: MessageSquare, component: RemindersTab },
   { id: 'history', label: 'History', icon: History, component: HistoryTab },
   { id: 'board', label: 'Board', icon: LayoutGrid, component: BoardTab },
   { id: 'body', label: 'Body', icon: Activity, component: BodyPredictorTab },
@@ -71,6 +74,7 @@ const NotificationInitializer = () => {
 
 function AppContent() {
   const { user } = useUser();
+  const { addNotification } = useNotifications();
   const [activeTab, setActiveTab] = useState('home');
   const [history, setHistory] = useState<WorkoutSession[]>(MOCK_DATA.workoutHistory as WorkoutSession[]);
 
@@ -96,12 +100,26 @@ function AppContent() {
     { id: 'hub', label: 'Hub', icon: LayoutGrid },
   ];
 
+  const showStatusSummary = () => {
+    feedback();
+    addNotification(
+      'Current Status',
+      `${user.name}, your recovery score is 84%. Today is a good day for high-intensity training!`,
+      'info'
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex justify-center selection:bg-[#6C63FF]/30">
       <div className="w-full max-w-[390px] min-h-screen bg-[#0a0a0a] relative flex flex-col pb-52 shadow-2xl">
         <header className="px-6 pt-12 pb-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-tight text-white">HardReps</h1>
+            <button 
+              onClick={showStatusSummary}
+              className="text-2xl font-bold tracking-tight text-white active:scale-95 transition-transform"
+            >
+              HardReps
+            </button>
             <div className="flex items-center space-x-3">
               <NotificationCenter />
               <button 
@@ -127,6 +145,8 @@ function AppContent() {
             >
               {activeTab === 'hub' ? (
                 <HubTab onNavigate={setActiveTab} />
+              ) : activeTab === 'reminders' ? (
+                <RemindersTab onBack={() => setActiveTab('hub')} />
               ) : activeTab === 'history' ? (
                 <HistoryTab history={history} />
               ) : activeTab === 'train' ? (
@@ -136,7 +156,7 @@ function AppContent() {
               ) : activeTab === 'stats' ? (
                 <StatsTab />
               ) : activeTab === 'board' ? (
-                <BoardTab />
+                <BoardTab fitData={MOCK_DATA.stats} />
               ) : activeTab === 'ai' ? (
                 <AICoachTab />
               ) : activeTab === 'body' ? (
@@ -145,6 +165,8 @@ function AppContent() {
                 <SleepTab />
               ) : activeTab === 'journal' ? (
                 <JournalTab />
+              ) : activeTab === 'heart-rate' ? (
+                <HeartRateTab onBack={() => setActiveTab('home')} />
               ) : (
                 <ProfileTab />
               )}

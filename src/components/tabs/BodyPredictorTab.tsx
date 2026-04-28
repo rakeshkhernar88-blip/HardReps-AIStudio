@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Zap, TrendingUp } from 'lucide-react';
 import { COLORS } from '../../constants';
+import { calculateTimeline } from '../../utils/growthUtils';
 
 export default function BodyPredictorTab() {
   const [muscle, setMuscle] = useState('Chest');
@@ -17,15 +18,7 @@ export default function BodyPredictorTab() {
 
   const muscles = ['Bicep', 'Chest', 'Shoulder', 'Back', 'Legs'];
 
-  // Predictive logic (mock)
-  const diff = targetSize - currentSize;
-  const growthRate = frequency * (diet === 'Bulk' ? 0.3 : diet === 'Maintain' ? 0.1 : 0.05);
-  const months = Math.max(1, Math.ceil(diff / growthRate));
-
-  const milestoneData = Array.from({ length: 6 }, (_, i) => ({
-    x: i,
-    y: currentSize + (i * growthRate > diff ? diff : i * growthRate)
-  }));
+  const { months, milestoneData } = calculateTimeline(currentSize, targetSize, frequency, diet);
 
   return (
     <div className="space-y-6">

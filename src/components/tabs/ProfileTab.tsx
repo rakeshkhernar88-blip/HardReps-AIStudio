@@ -13,10 +13,14 @@ import {
   Settings,
   Shield,
   Bell,
-  Check
+  Check,
+  Trophy,
+  Dumbbell,
+  Activity
 } from 'lucide-react';
 import { useUser } from '../../context/UserContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { feedback } from '../../lib/haptics';
 
 export default function ProfileTab() {
   const { user, updateUser } = useUser();
@@ -38,6 +42,17 @@ export default function ProfileTab() {
     addNotification('Profile Updated', 'Your details have been saved successfully.', 'success');
   };
 
+  const toggleUnit = () => {
+    const newUnit = user.unit === 'kg' ? 'lbs' : 'kg';
+    updateUser({ unit: newUnit });
+    addNotification('Unit Changed', `Preferences updated to ${newUnit}.`, 'success');
+  };
+
+  const togglePublic = () => {
+    updateUser({ isPublic: !user.isPublic });
+    addNotification('Privacy Updated', `Profile is now ${!user.isPublic ? 'Public' : 'Private'}.`, 'success');
+  };
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
@@ -47,7 +62,11 @@ export default function ProfileTab() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, avatar: reader.result as string }));
+        const result = reader.result as string;
+        // Update both to ensure immediate feedback and persistence
+        updateUser({ avatar: result });
+        setFormData(prev => ({ ...prev, avatar: result }));
+        addNotification('Avatar Updated', 'Your profile picture has been updated.', 'success');
       };
       reader.readAsDataURL(file);
     }
@@ -57,18 +76,16 @@ export default function ProfileTab() {
     <div className="space-y-8 pb-12">
       {/* Header Profile Info */}
       <div className="flex flex-col items-center space-y-4 pt-4">
-        <div className="relative group">
+        <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
           <motion.div 
             whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             className="w-32 h-32 rounded-[2.5rem] overflow-hidden border-4 border-[#1a1a1a] shadow-2xl relative"
           >
             <img src={isEditing ? formData.avatar : user.avatar} alt={user.name} className="w-full h-full object-cover" />
-            <button 
-              onClick={handleAvatarClick}
-              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"
-            >
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
               <Camera size={24} />
-            </button>
+            </div>
           </motion.div>
           <input 
             type="file" 
@@ -77,8 +94,8 @@ export default function ProfileTab() {
             className="hidden" 
             accept="image/*" 
           />
-          <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#6C63FF] rounded-2xl flex items-center justify-center border-4 border-[#0a0a0a] text-white shadow-lg">
-            <Settings size={18} />
+          <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#6C63FF] rounded-2xl flex items-center justify-center border-4 border-[#0a0a0a] text-white shadow-lg pointer-events-none">
+            <Camera size={18} />
           </div>
         </div>
 
@@ -126,7 +143,7 @@ export default function ProfileTab() {
           </div>
           <div className="flex items-end space-x-1">
             <span className="text-2xl font-bold">{user.weight}</span>
-            <span className="text-xs text-gray-500 mb-1">kg</span>
+            <span className="text-xs text-gray-500 mb-1">{user.unit}</span>
           </div>
         </div>
         <div className="bg-[#1a1a1a] p-5 rounded-[2rem] border border-white/5 space-y-2">
@@ -138,6 +155,57 @@ export default function ProfileTab() {
             <span className="text-2xl font-bold">{user.height}</span>
             <span className="text-xs text-gray-500 mb-1">cm</span>
           </div>
+        </div>
+      </div>
+
+      {/* Personal Bests Grid */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-4">
+          <h3 className="text-[10px] uppercase tracking-wider font-extrabold text-[#6C63FF]">Personal Bests (PRs)</h3>
+          {!isEditing && <Trophy size={14} className="text-yellow-500" />}
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <PRCard 
+            icon={Dumbbell} 
+            label="Bench Press" 
+            value={isEditing ? formData.personalBests.bench : user.personalBests.bench} 
+            isEditing={isEditing}
+            onChange={(val) => setFormData({
+              ...formData, 
+              personalBests: { ...formData.personalBests, bench: val }
+            })}
+          />
+          <PRCard 
+            icon={Activity} 
+            label="Squat" 
+            value={isEditing ? formData.personalBests.squat : user.personalBests.squat} 
+            isEditing={isEditing}
+            onChange={(val) => setFormData({
+              ...formData, 
+              personalBests: { ...formData.personalBests, squat: val }
+            })}
+          />
+          <PRCard 
+            icon={Activity} 
+            label="Deadlift" 
+            value={isEditing ? formData.personalBests.deadlift : user.personalBests.deadlift} 
+            isEditing={isEditing}
+            onChange={(val) => setFormData({
+              ...formData, 
+              personalBests: { ...formData.personalBests, deadlift: val }
+            })}
+          />
+          <PRCard 
+            icon={Dumbbell} 
+            label="Overhead" 
+            value={isEditing ? formData.personalBests.overhead : user.personalBests.overhead} 
+            isEditing={isEditing}
+            onChange={(val) => setFormData({
+              ...formData, 
+              personalBests: { ...formData.personalBests, overhead: val }
+            })}
+          />
         </div>
       </div>
 
@@ -224,11 +292,34 @@ export default function ProfileTab() {
       <div className="space-y-3">
         <h3 className="text-[10px] uppercase tracking-wider font-bold text-gray-500 ml-4">Preferences</h3>
         <div className="bg-[#1a1a1a] rounded-[2.5rem] border border-white/5 overflow-hidden">
+          <SettingsToggle 
+            icon={Activity} 
+            label="Weight Units" 
+            sublabel={`Current: ${user.unit.toUpperCase()}`}
+            active={user.unit === 'lbs'}
+            onToggle={toggleUnit}
+          />
+          <SettingsToggle 
+            icon={Shield} 
+            label="Public Profile" 
+            sublabel="Visible to other users"
+            active={user.isPublic}
+            onToggle={togglePublic}
+          />
           <SettingsItem icon={Target} label="My Goals" sublabel={user.goal} />
           <SettingsItem icon={Bell} label="Notifications" sublabel="Push, Emails" />
-          <SettingsItem icon={Shield} label="Privacy & Security" />
           <div className="h-px bg-white/5 mx-6" />
-          <button className="w-full px-6 py-5 flex items-center justify-between text-red-500 hover:bg-white/5 transition-colors">
+          <button 
+            onClick={() => {
+              feedback();
+              addNotification(
+                'Sign Out',
+                'In this prototype, signing out is restricted to keep your local data safe.',
+                'info'
+              );
+            }}
+            className="w-full px-6 py-5 flex items-center justify-between text-red-500 hover:bg-white/5 transition-colors"
+          >
             <div className="flex items-center space-x-4">
               <div className="p-2 bg-red-500/10 rounded-xl">
                 <LogOut size={18} />
@@ -256,5 +347,67 @@ function SettingsItem({ icon: Icon, label, sublabel }: { icon: any, label: strin
       </div>
       <ChevronRight size={16} className="text-gray-600" />
     </button>
+  );
+}
+
+function SettingsToggle({ icon: Icon, label, sublabel, active, onToggle }: { 
+  icon: any, 
+  label: string, 
+  sublabel?: string, 
+  active: boolean,
+  onToggle: () => void
+}) {
+  return (
+    <div className="w-full px-6 py-5 flex items-center justify-between hover:bg-white/5 transition-colors text-left group">
+      <div className="flex items-center space-x-4">
+        <div className="p-2 bg-white/5 rounded-xl text-gray-400 group-hover:text-white transition-colors">
+          <Icon size={18} />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold">{label}</span>
+          {sublabel && <span className="text-[10px] text-gray-500">{sublabel}</span>}
+        </div>
+      </div>
+      <button 
+        onClick={onToggle}
+        className={`w-12 h-6 rounded-full relative transition-colors ${active ? 'bg-[#6C63FF]' : 'bg-white/10'}`}
+      >
+        <motion.div 
+          animate={{ x: active ? 26 : 2 }}
+          className="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm"
+        />
+      </button>
+    </div>
+  );
+}
+
+function PRCard({ icon: Icon, label, value, isEditing, onChange }: { 
+  icon: any, 
+  label: string, 
+  value: number, 
+  isEditing: boolean,
+  onChange: (val: number) => void 
+}) {
+  const { user } = useUser();
+  return (
+    <div className="bg-[#1a1a1a] p-5 rounded-[2rem] border border-white/5 space-y-3">
+      <div className="flex items-center space-x-2 text-gray-500">
+        <Icon size={14} />
+        <span className="text-[10px] uppercase tracking-wider font-bold">{label}</span>
+      </div>
+      {isEditing ? (
+        <input 
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full bg-black/20 border border-white/10 rounded-xl py-2 px-3 text-lg font-bold text-white focus:outline-none focus:border-[#6C63FF]/50"
+        />
+      ) : (
+        <div className="flex items-end space-x-1">
+          <span className="text-2xl font-bold">{value}</span>
+          <span className="text-xs text-gray-500 mb-1">{user.unit}</span>
+        </div>
+      )}
+    </div>
   );
 }
